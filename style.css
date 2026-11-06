@@ -232,16 +232,67 @@ ul { list-style: none; margin: 0; padding: 0; }
 .menu {
   position: relative;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
   min-height: 56px;
-  padding: 6px 2px;
+  padding: 6px 2px 12px;
   background: var(--surface);
 }
 
-.menu + .menu { border-top: 1px solid var(--border); }
-.menu-locked { padding-left: 14px; }
+.menu-fields {
+  display: grid;
+  flex: 0 0 100%;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 8px;
+  padding: 0 10px;
+}
 
+.field { display: block; min-width: 0; }
+
+.field-label {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.field-box {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.field-box:focus-within { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+.field-input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 16px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.field-input::placeholder { color: var(--muted); }
+.field-input:disabled { opacity: 0.55; -webkit-text-fill-color: currentColor; }
+
+.field-unit {
+  flex: none;
+  margin-left: 4px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.menu + .menu { border-top: 1px solid var(--border); }
 .menu-number {
   flex: none;
   min-width: 18px;
@@ -302,7 +353,9 @@ ul { list-style: none; margin: 0; padding: 0; }
 
 .menu.dragging .handle { cursor: grabbing; }
 
-.menu-editing { padding: 8px 8px 8px 14px; }
+.menu-locked .menu-number,
+.menu-editing .menu-number { margin-left: 12px; }
+.menu-editing .edit-form { padding-right: 8px; }
 
 /* 入力欄とボタンを同じ行に置き、キーボードが出てもボタンが隠れないようにする */
 .edit-form {

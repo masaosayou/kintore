@@ -2,6 +2,8 @@
 
 const STORAGE_KEY = 'kintore-menus-v1';
 const MAX_NAME_LENGTH = 50;
+const MAX_WEIGHT_LENGTH = 10;
+const MAX_VOLUME_LENGTH = 30;
 
 // 表示順は月曜始まり。index は Date#getDay() の値。
 const DAYS = [
@@ -121,6 +123,24 @@ function renderTop() {
   document.title = '筋トレメニュー';
 }
 
+function saveErrorBanner() {
+  return el('p', {
+    className: 'error',
+    role: 'alert',
+    textContent: '保存できませんでした。この内容はアプリを閉じると消える可能性があります。',
+  });
+}
+
+// 再描画しない入力欄でも、保存の失敗と回復をその場で表示に反映する
+function syncSaveError() {
+  const banner = app.querySelector('.error');
+  if (saveFailed && !banner) {
+    app.querySelector('main').prepend(saveErrorBanner());
+  } else if (!saveFailed && banner) {
+    banner.remove();
+  }
+}
+
 function currentDraft() {
   return app.querySelector('.add-input')?.value ?? '';
 }
@@ -159,13 +179,7 @@ function renderDay(day, { focusInput = false, draft = '', notice = '', editingId
   });
 
   const main = el('main', { className: 'content' });
-  if (saveFailed) {
-    main.append(el('p', {
-      className: 'error',
-      role: 'alert',
-      textContent: '保存できませんでした。この内容はアプリを閉じると消える可能性があります。',
-    }));
-  }
+  if (saveFailed) main.append(saveErrorBanner());
   main.append(form);
   if (notice) main.append(el('p', { className: 'notice', role: 'status', textContent: notice }));
 
@@ -187,13 +201,61 @@ function menuNumber(index) {
   return el('span', { className: 'menu-number', textContent: String(index + 1) });
 }
 
+function menuField(menu, { key, label, unit, inputMode, placeholder, maxLength, disabled }) {
+  const input = el('input', {
+    className: 'field-input',
+    type: 'text',
+    inputMode,
+    placeholder,
+    maxLength,
+    disabled,
+    enterKeyHint: 'done',
+    autocomplete: 'off',
+    value: menu[key] ?? '',
+  });
+  // 描き直しで入力中の欄が消えないよう、再描画せずに保存だけ行う
+  input.addEventListener('input', () => {
+    menu[key] = input.value;
+    saveMenus();
+    syncSaveError();
+  });
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && !event.isComposing && event.keyCode !== 229) input.blur();
+  });
+
+  const box = el('span', { className: 'field-box' }, input);
+  if (unit) box.append(el('span', { className: 'field-unit', textContent: unit }));
+  return el('label', { className: 'field' }, el('span', { className: 'field-label', textContent: label }), box);
+}
+
+function menuFields(menu, disabled) {
+  return el('div', { className: 'menu-fields' },
+    menuField(menu, {
+      key: 'weight',
+      label: 'ウェイト',
+      unit: 'kg',
+      inputMode: 'decimal',
+      placeholder: '0',
+      maxLength: MAX_WEIGHT_LENGTH,
+      disabled,
+    }),
+    menuField(menu, {
+      key: 'volume',
+      label: 'ボリューム',
+      inputMode: 'text',
+      placeholder: '10回×3セット',
+      maxLength: MAX_VOLUME_LENGTH,
+      disabled,
+    }));
+}
+
 function menuRow(day, menu, index, editingId) {
   if (menu.id === editingId) return editRow(day, menu, index);
 
   const name = el('span', { className: 'menu-name', textContent: menu.name });
   // 修正中は他の行を操作できないようにして、入力中の内容を失わないようにする
   if (editingId !== null) {
-    return el('li', { className: 'menu menu-locked' }, menuNumber(index), name);
+    return el('li', { className: 'menu menu-locked' }, menuNumber(index), name, menuFields(menu, true));
   }
 
   const handle = el('button', {
@@ -225,7 +287,8 @@ function menuRow(day, menu, index, editingId) {
     renderDay(day, { draft: currentDraft() });
   });
 
-  const row = el('li', { className: 'menu' }, handle, menuNumber(index), name, editButton, deleteButton);
+  const row = el('li', { className: 'menu' },
+    handle, menuNumber(index), name, editButton, deleteButton, menuFields(menu, false));
   handle.addEventListener('pointerdown', (event) => startDrag(event, day, row, handle));
   // touch-action が効かない場合でも、つまみの操作で画面がスクロールしないようにする
   handle.addEventListener('touchmove', (event) => event.preventDefault(), { passive: false });
@@ -264,7 +327,7 @@ function editRow(day, menu, index) {
     renderDay(day, { draft });
   });
 
-  return el('li', { className: 'menu menu-editing' }, menuNumber(index), form);
+  return el('li', { className: 'menu menu-editing' }, menuNumber(index), form, menuFields(menu, true));
 }
 
 function startDrag(event, day, row, handle) {

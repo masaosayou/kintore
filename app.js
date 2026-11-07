@@ -4,6 +4,8 @@ const STORAGE_KEY = 'kintore-menus-v1';
 const MAX_NAME_LENGTH = 50;
 const MAX_WEIGHT_LENGTH = 10;
 const MAX_VOLUME_LENGTH = 30;
+const MAX_REPS_LENGTH = 3;
+const SET_NUMBERS = [1, 2, 3];
 
 // 表示順は月曜始まり。index は Date#getDay() の値。
 const DAYS = [
@@ -246,7 +248,18 @@ function menuFields(menu, disabled) {
       placeholder: '10回×3セット',
       maxLength: MAX_VOLUME_LENGTH,
       disabled,
-    }));
+    }),
+    el('div', { className: 'menu-sets' },
+      ...SET_NUMBERS.map((number) => menuField(menu, {
+        key: `reps${number}`,
+        label: `${number}セット目`,
+        unit: '回',
+        // iPhoneで数字だけのキーボードを出す
+        inputMode: 'decimal',
+        placeholder: '0',
+        maxLength: MAX_REPS_LENGTH,
+        disabled,
+      }))));
 }
 
 function menuRow(day, menu, index, editingId) {

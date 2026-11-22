@@ -6,6 +6,11 @@ const MAX_WEIGHT_LENGTH = 10;
 const MAX_VOLUME_LENGTH = 30;
 const MAX_REPS_LENGTH = 3;
 const SET_NUMBERS = [1, 2, 3];
+// 1日目は以前から使っている reps1〜3 に保存し、入力済みの回数をそのまま1日目として扱う
+const SET_DAYS = [
+  { label: '1日目', keyPrefix: 'reps' },
+  { label: '2日目', keyPrefix: 'day2Reps' },
+];
 
 // 表示順は月曜始まり。index は Date#getDay() の値。
 const DAYS = [
@@ -203,7 +208,7 @@ function menuNumber(index) {
   return el('span', { className: 'menu-number', textContent: String(index + 1) });
 }
 
-function menuField(menu, { key, label, unit, inputMode, placeholder, maxLength, disabled }) {
+function fieldBox(menu, { key, unit, inputMode, placeholder, maxLength, disabled, ariaLabel }) {
   const input = el('input', {
     className: 'field-input',
     type: 'text',
@@ -215,6 +220,7 @@ function menuField(menu, { key, label, unit, inputMode, placeholder, maxLength, 
     autocomplete: 'off',
     value: menu[key] ?? '',
   });
+  if (ariaLabel) input.ariaLabel = ariaLabel;
   // 描き直しで入力中の欄が消えないよう、再描画せずに保存だけ行う
   input.addEventListener('input', () => {
     menu[key] = input.value;
@@ -227,7 +233,36 @@ function menuField(menu, { key, label, unit, inputMode, placeholder, maxLength, 
 
   const box = el('span', { className: 'field-box' }, input);
   if (unit) box.append(el('span', { className: 'field-unit', textContent: unit }));
-  return el('label', { className: 'field' }, el('span', { className: 'field-label', textContent: label }), box);
+  return box;
+}
+
+function menuField(menu, { label, ...options }) {
+  return el('label', { className: 'field' },
+    el('span', { className: 'field-label', textContent: label }), fieldBox(menu, options));
+}
+
+// 列見出しにセット番号、行見出しに日を置き、回数を表の形で入力する
+function menuSets(menu, disabled) {
+  const grid = el('div', { className: 'menu-sets' }, el('span'));
+  for (const number of SET_NUMBERS) {
+    grid.append(el('span', { className: 'field-label', textContent: `${number}セット目`, ariaHidden: 'true' }));
+  }
+  for (const setDay of SET_DAYS) {
+    grid.append(el('span', { className: 'field-label set-day', textContent: setDay.label, ariaHidden: 'true' }));
+    for (const number of SET_NUMBERS) {
+      grid.append(fieldBox(menu, {
+        key: `${setDay.keyPrefix}${number}`,
+        unit: '回',
+        // iPhoneで数字だけのキーボードを出す
+        inputMode: 'decimal',
+        placeholder: '0',
+        maxLength: MAX_REPS_LENGTH,
+        disabled,
+        ariaLabel: `${setDay.label} ${number}セット目の回数`,
+      }));
+    }
+  }
+  return grid;
 }
 
 function menuFields(menu, disabled) {
@@ -249,17 +284,7 @@ function menuFields(menu, disabled) {
       maxLength: MAX_VOLUME_LENGTH,
       disabled,
     }),
-    el('div', { className: 'menu-sets' },
-      ...SET_NUMBERS.map((number) => menuField(menu, {
-        key: `reps${number}`,
-        label: `${number}セット目`,
-        unit: '回',
-        // iPhoneで数字だけのキーボードを出す
-        inputMode: 'decimal',
-        placeholder: '0',
-        maxLength: MAX_REPS_LENGTH,
-        disabled,
-      }))));
+    menuSets(menu, disabled));
 }
 
 function menuRow(day, menu, index, editingId) {

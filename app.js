@@ -242,7 +242,7 @@ function menuField(menu, { label, ...options }) {
 }
 
 // 列見出しにセット番号、行見出しに日を置き、回数を表の形で入力する
-function menuSets(menu, disabled) {
+function menuSets(day, menu, disabled) {
   const grid = el('div', { className: 'menu-sets' }, el('span'));
   for (const number of SET_NUMBERS) {
     grid.append(el('span', { className: 'field-label', textContent: `${number}セット目`, ariaHidden: 'true' }));
@@ -262,10 +262,26 @@ function menuSets(menu, disabled) {
       }));
     }
   }
+  const clear = el('button', {
+    className: 'set-clear',
+    type: 'button',
+    textContent: '記録をクリア',
+    disabled,
+    ariaLabel: `${menu.name}の1日目と2日目の回数をクリア`,
+  });
+  clear.addEventListener('click', () => {
+    if (!window.confirm(`「${menu.name}」の1日目・2日目の回数を消しますか？`)) return;
+    for (const setDay of SET_DAYS) {
+      for (const number of SET_NUMBERS) delete menu[`${setDay.keyPrefix}${number}`];
+    }
+    saveMenus();
+    renderDay(day, { draft: currentDraft() });
+  });
+  grid.append(clear);
   return grid;
 }
 
-function menuFields(menu, disabled) {
+function menuFields(day, menu, disabled) {
   return el('div', { className: 'menu-fields' },
     menuField(menu, {
       key: 'weight',
@@ -284,7 +300,7 @@ function menuFields(menu, disabled) {
       maxLength: MAX_VOLUME_LENGTH,
       disabled,
     }),
-    menuSets(menu, disabled));
+    menuSets(day, menu, disabled));
 }
 
 function menuRow(day, menu, index, editingId) {
@@ -293,7 +309,7 @@ function menuRow(day, menu, index, editingId) {
   const name = el('span', { className: 'menu-name', textContent: menu.name });
   // 修正中は他の行を操作できないようにして、入力中の内容を失わないようにする
   if (editingId !== null) {
-    return el('li', { className: 'menu menu-locked' }, menuNumber(index), name, menuFields(menu, true));
+    return el('li', { className: 'menu menu-locked' }, menuNumber(index), name, menuFields(day, menu, true));
   }
 
   const handle = el('button', {
@@ -326,7 +342,7 @@ function menuRow(day, menu, index, editingId) {
   });
 
   const row = el('li', { className: 'menu' },
-    handle, menuNumber(index), name, editButton, deleteButton, menuFields(menu, false));
+    handle, menuNumber(index), name, editButton, deleteButton, menuFields(day, menu, false));
   handle.addEventListener('pointerdown', (event) => startDrag(event, day, row, handle));
   // touch-action が効かない場合でも、つまみの操作で画面がスクロールしないようにする
   handle.addEventListener('touchmove', (event) => event.preventDefault(), { passive: false });
@@ -365,7 +381,7 @@ function editRow(day, menu, index) {
     renderDay(day, { draft });
   });
 
-  return el('li', { className: 'menu menu-editing' }, menuNumber(index), form, menuFields(menu, true));
+  return el('li', { className: 'menu menu-editing' }, menuNumber(index), form, menuFields(day, menu, true));
 }
 
 function startDrag(event, day, row, handle) {
